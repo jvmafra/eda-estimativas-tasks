@@ -74,6 +74,111 @@ estimativas %>%
 
 ## Qual a relação entre as estimativas e a realidade na empresa como um todo?
 
+Inicialmente vamos analisar a distribuição das horas estimadas e estimadas para ter uma noção do dado que estamos trabalhando.
+
+Temos uma amplitude grande nos valores. Horas estimadas que variam de 0.01 até valores muito altos como 910, que impacta na média. 
+
+50% das tasks são estimadas para durarem mais que 2.5 horas e 50% são estimadas para durarem mais que 2.5 horas.
+
+```{r}
+summary(estimativas$HoursEstimate)
+
+ggplot(data = estimativas, aes(x = "horas estimadas", y = HoursEstimate)) +
+    geom_boxplot(fill = "#FF6666") +
+    ylab("Horas estimadas")
+```
+
+Para as horas gastas de fato nas tasks, temos uma amplitude maior ainda nos dados (Duas tasks duraram mais 2000 horas, enquanto a terceira task que mais durou, durou "apenas" 800 horas).
+
+```{r}
+summary(estimativas$HoursActual)
+
+ggplot(data = estimativas, aes(x = "horas gastas", y = HoursActual)) +
+    geom_boxplot(fill = "#FF6666") +
+    ylab("Horas gastas")
+```
+
+Mostrando a relação entre horas gastas e horas estimadas usando um gráfico de dispersão, espera-se ver que quanto mais horas estimadas para uma task maior seja o tempo gasto para realizá-la. Se isso não acontece, provavelmente há um erro no planejamento das tarefas.
+
+Na primeira visualização, não conseguimos ver isso claramente por causa da diferença de escalas entre os eixos, mas serve para nos mostrar uma situação um tanto quanto estranha: as duas tasks que duraram mais que 2000 horas tiveram poucas horas estimadas.
+
+A segunda visualização usa escala de log de 10 nos dois eixos. Nela, podemos ver a tendência que era esperada de que quanto mais horas estimadas, mais horas gastas para completar a tarefa.
+
+```{r}
+ggplot() +
+    geom_point(data = estimativas, aes(x = HoursEstimate, y = HoursActual), color = "#FF6666") +
+    xlab("Horas estimadas") +
+    ylab("Horas gastas")
+
+ggplot() +
+    geom_point(data = estimativas, aes(x = HoursEstimate, y = HoursActual), color = "#FF6666") +
+    scale_x_log10() +
+    scale_y_log10() +
+    xlab("Horas estimadas") +
+    ylab("Horas gastas")
+```
+
+Calculando a correlação entre as duas variáveis usando dois métodos distintos, podemos ver que o método de pearson mostra o correlação baixa entre as duas, muito provavelmente afetado por valores extremos.
+
+O método de Spearman não sente esse efeito de valores extremos e mostra que existe uma correlação forte e positiva entre as duas, conforme o último gráfico indica.
+
+```{r}
+cor(estimativas$HoursEstimate, estimativas$HoursActual, method = "pearson")
+cor(estimativas$HoursEstimate, estimativas$HoursActual, method = "spearman")
+```
+
+Podemos também criar uma nova variável que representa a diferença entre o que foi estimado e a realidade para ter uma ideia de como essa diferença se distribui.
+
+Valores positivos indicam que a tarefa foi superestimada, ou seja se estimou mais que o necessário para concluí-la.
+
+Valores negativos indicam que a tarefa foi subestimada, ou seja, se estimou um valor abaixo do que foi necessário para concluí-la.
+
+Existem várias tarefas subestimadas (Inclusive duas foram muito subestimadas, que são as duas tasks já citadas anteriormente) e várias tarefas superestimadas, mas algo interessante é que a mediana é 0 e a média -0.45. Ou seja, apesar dos valores extremos, em geral, diferença entre o planejado e o real é pequena.
+
+```{r}
+estimativas.diff <- estimativas %>% mutate(diff = HoursEstimate - HoursActual)
+summary(estimativas.diff$diff)
+
+ggplot(data = estimativas.diff, aes(x = "horas_estimadas - horas_gastas", y = diff)) +
+    geom_boxplot(fill = "#FF6666") +
+    xlab("Diferença entre horas estimadas e horas gastas") +
+    ylab("Diferença")
+```
+
 
 ## Qual a relação entre as estimativas e a realidade em cada projeto ou por cada categoria? 
+
+
+Por operação: Dispersão e Boxplot
+
+```{r}
+
+ggplot() +
+    geom_point(data = estimativas, aes(x = HoursEstimate, y = HoursActual), color = "#FF6666") +
+    scale_x_log10() +
+    scale_y_log10() +
+    xlab("Horas estimadas") +
+    ylab("Horas gastas") + 
+    facet_grid(.~Category)
+
+ggplot(data = estimativas.diff, aes(x = "horas_estimadas - horas_gastas", y = diff)) +
+    geom_boxplot(fill = "#FF6666") +
+    xlab("Diferença entre horas estimadas e horas gastas") +
+    ylab("Diferença") +
+    facet_grid(.~Category)
+
+```
+
+Por projeto
+
+```{r}
+
+ggplot(data = estimativas.diff, aes(x = "horas_estimadas - horas_gastas", y = diff)) +
+    geom_boxplot(fill = "#FF6666") +
+    xlab("Diferença entre horas estimadas e horas gastas") +
+    ylab("Diferença") +
+    facet_grid(.~ProjectCode)
+```
+
+
 
