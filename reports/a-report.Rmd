@@ -1,9 +1,11 @@
 ---
 title: "EDA SIP"
+author: "João Victor Mafra"
 output:
-    html_document:
-    df_print: paged
-theme: sandstone
+  prettydoc::html_pretty:
+    df_print: kable
+    theme: tactile
+    highlight: github
 ---
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -15,7 +17,9 @@ theme_set(theme_bw())
 knitr::opts_chunk$set(tidy = FALSE,
                       fig.width = 6,
                       fig.height = 5,
-                      echo = FALSE)
+                      echo = FALSE,
+                      warning=FALSE, 
+                      message=FALSE)
 
 ```
 
@@ -23,29 +27,7 @@ knitr::opts_chunk$set(tidy = FALSE,
 estimativas_raw = read_projectdata()
 ```
 
-## O que são os dados
-
-```{r}
-glimpse(estimativas_raw)
-```
-
-## Entendendo os dados
-
-```{r}
-estimativas_raw %>% 
-    select(ProjectCode, TaskNumber, HoursEstimate, HoursActual) %>% 
-    skimr::skim()
-```
-
 Temos 20 projetos, com 12299 estimativas_raw. Não há apenas uma estimativa por tarefa, já que há apenas 10266 valores distintos de `TaskNumber`.
-
-```{r}
-estimativas_raw %>% 
-    group_by(TaskNumber) %>% 
-    mutate(estimativas_raw = n()) %>% 
-    filter(estimativas_raw > 1) %>% 
-    count(TaskNumber, sort = T)
-```
 
 ### 1 estimativa por task
 
@@ -74,11 +56,11 @@ estimativas %>%
 
 ## Qual a relação entre as estimativas e a realidade na empresa como um todo?
 
-Inicialmente vamos analisar a distribuição das horas estimadas e estimadas para ter uma noção do dado que estamos trabalhando.
+Inicialmente vamos analisar a distribuição das horas estimadas e gastas para ter uma noção do dado que estamos trabalhando.
 
 Temos uma amplitude grande nos valores. Horas estimadas que variam de 0.01 até valores muito altos como 910, que impacta na média. 
 
-50% das tasks são estimadas para durarem mais que 2.5 horas e 50% são estimadas para durarem mais que 2.5 horas.
+50% das tasks são estimadas para durarem mais que 2.5 horas e 50% são estimadas para durarem menos que 2.5 horas.
 
 ```{r}
 summary(estimativas$HoursEstimate)
@@ -118,14 +100,22 @@ ggplot() +
     ylab("Horas gastas")
 ```
 
-Calculando a correlação entre as duas variáveis usando dois métodos distintos, podemos ver que o método de pearson mostra o correlação baixa entre as duas, muito provavelmente afetado por valores extremos.
-
-O método de Spearman não sente esse efeito de valores extremos e mostra que existe uma correlação forte e positiva entre as duas, conforme o último gráfico indica.
+Calculando a correlação entre as duas variáveis usando dois métodos distintos, podemos ver que o método de pearson mostra o correlação fraca entre as duas, muito provavelmente afetado por valores extremos.
 
 ```{r}
 cor(estimativas$HoursEstimate, estimativas$HoursActual, method = "pearson")
-cor(estimativas$HoursEstimate, estimativas$HoursActual, method = "spearman")
+
 ```
+
+O método de Spearman não sente esse efeito de valores extremos e mostra que existe uma correlação forte e positiva entre as duas, conforme o último gráfico indica.
+
+
+```{r}
+
+cor(estimativas$HoursEstimate, estimativas$HoursActual, method = "spearman")
+
+```
+
 
 Podemos também criar uma nova variável que representa a diferença entre o que foi estimado e a realidade para ter uma ideia de como essa diferença se distribui.
 
@@ -148,8 +138,9 @@ ggplot(data = estimativas.diff, aes(x = "horas_estimadas - horas_gastas", y = di
 
 ## Qual a relação entre as estimativas e a realidade em cada projeto ou por cada categoria? 
 
+Temos o mesmo gráfico de dispersão da estimativa em relação a realidade mostrado na questão anterior (com a escala de log), mas agora para cada categoria. 
 
-Por operação: Dispersão e Boxplot
+Podemos observar a mesma tendência de crescimento das horas gastas com a estimativa.
 
 ```{r}
 
@@ -161,24 +152,42 @@ ggplot() +
     ylab("Horas gastas") + 
     facet_grid(.~Category)
 
-ggplot(data = estimativas.diff, aes(x = "horas_estimadas - horas_gastas", y = diff)) +
+```
+
+Abaixo temos a correlação entre a estimativa e a relidade para cada categoria usando o método de Spearman. Nos três casos temos uma correlação forte e positiva entre as duas variáveis, conforme esperado. Para a categoria "Management" essa correlação é um pouco menor.
+
+
+```{r}
+
+estimativas.man <- estimativas %>% filter(Category == "Management")
+estimativas.opr <- estimativas %>% filter(Category == "Operational")
+estimativas.dev <- estimativas %>% filter(Category == "Development")
+
+print("MANAGEMENT:")
+cor(estimativas.man$HoursActual, estimativas.man$HoursEstimate, method = "spearman")
+
+print("OPERATIONAL:")
+cor(estimativas.opr$HoursActual, estimativas.opr$HoursEstimate, method = "spearman")
+
+print("DEVELOPMENT:")
+cor(estimativas.dev$HoursActual, estimativas.dev$HoursEstimate, method = "spearman")
+
+```
+
+Agora temos um boxplot por categoria para mostrar a distribuição da diferença entre o que foi estimado e o que foi gasto, assim como na primeira questão.
+
+Como podemos ver, os dois casos isolados nos quais as tasks foram muito subestimadas pertencem a duas categorias diferentes (Development e Operational). A categoria Management tem uma menor amplitude das diferenças com mediana em 0, indicando que para essa categoria temos mais acertos nas estimativas.
+
+
+```{r}
+ggplot(data = estimativas.diff, aes(x = "x", y = diff)) +
     geom_boxplot(fill = "#FF6666") +
     xlab("Diferença entre horas estimadas e horas gastas") +
     ylab("Diferença") +
     facet_grid(.~Category)
-
 ```
 
-Por projeto
 
-```{r}
-
-ggplot(data = estimativas.diff, aes(x = "horas_estimadas - horas_gastas", y = diff)) +
-    geom_boxplot(fill = "#FF6666") +
-    xlab("Diferença entre horas estimadas e horas gastas") +
-    ylab("Diferença") +
-    facet_grid(.~ProjectCode)
-```
 
 
 
